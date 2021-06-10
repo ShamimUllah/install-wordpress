@@ -110,9 +110,40 @@ class InstallWordpress extends Command
             $this->info($installDockerStep7->getOutput());
         } else {
             /**
-             * Show message if docker is installed.
+             * Check docker-compose is installed or not.
              */
-            $this->info('Docker is installed.');
+
+            $this->info('Checking docker-compose is installed or not...');
+            $checkDockerComposeInstalled = new Process(['which', 'docker-compose']);
+
+            $checkDockerComposeInstalled->run();
+            if ($checkDockerComposeInstalled->getOutput() != '') {
+
+                /**
+                 * Run commands if docker-compose is not installed.
+                 */
+
+
+                $installDockerComposeStep1 = new Process(['sudo', 'curl', '-L', 'https://github.com/docker/compose/releases/download/1.29.2/docker-compose-linux-x86_64', '-o', '/usr/local/bin/docker-compose']);
+
+                $installDockerComposeStep1->run();
+                if (!$installDockerComposeStep1->isSuccessful()) {
+                    $this->warn(new ProcessFailedException($installDockerComposeStep1));
+                }
+
+                $this->info($installDockerComposeStep1->getOutput());
+
+                $installDockerComposeStep2 = new Process(['sudo', 'chmod', '+x', '/usr/local/bin/docker-compose']);
+
+                $installDockerComposeStep2->run();
+                if (!$installDockerComposeStep2->isSuccessful()) {
+                    $this->warn(new ProcessFailedException($installDockerComposeStep2));
+                }
+
+                $this->info($installDockerComposeStep2->getOutput());
+            } else {
+                $this->info('docker-compose is already installed.');
+            }
         }
     }
 }

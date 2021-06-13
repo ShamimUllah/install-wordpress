@@ -117,7 +117,7 @@ class InstallWordpress extends Command
             $checkDockerComposeInstalled = new Process(['which', 'docker-compose']);
 
             $checkDockerComposeInstalled->run();
-            if ($checkDockerComposeInstalled->getOutput() != '') {
+            if ($checkDockerComposeInstalled->getOutput() == '') {
 
                 /**
                  * Run commands if docker-compose is not installed.

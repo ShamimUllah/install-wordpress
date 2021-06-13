@@ -14,14 +14,14 @@ class InstallWordpress extends Command
      *
      * @var string
      */
-    protected $signature = 'install:wordpress';
+    protected $signature = 'install:wordpress {service?} ';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'This command will install wordpress';
+    protected $description = 'This command will manage wordpress installation.';
 
     /**
      * Create a new command instance.
@@ -43,6 +43,9 @@ class InstallWordpress extends Command
         /**
          * Check docker is installed or not.
          */
+
+        $service = $this->argument('service');
+        $this->info($service);
 
         $this->info('Checking docker is installed or not...');
         $checkDockerInstalled = new Process(['which', 'docker']);
@@ -69,16 +72,44 @@ class InstallWordpress extends Command
             } else {
                 $this->info('docker-compose is already installed.');
 
-                $siteTitle = 'Wordpress'; /* Set default site title */
-                $domainName = 'example.com'; /* Set default domain name */
+                switch ($service) {
+                    case '':
+                        /**
+                         * Wordpress installation commands
+                         */
 
-                $siteTitle = $this->ask('Enter wordpress site name?');
-                $domainName = $this->ask('Enter wordpress domain name (Ex:example.com)?');
+                        $siteTitle = 'Wordpress'; /* Set default site title */
+                        $domainName = 'example.com'; /* Set default domain name */
 
-                if (preg_match("/^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$/", $domainName) == FALSE) {
-                    $domainName = $this->ask('Enter valid domain name (Ex:example.com)?');
-                };
-                $this->installWp($siteTitle, $domainName);
+                        $siteTitle = $this->ask('Enter wordpress site name?');
+                        $domainName = $this->ask('Enter wordpress domain name (Ex:example.com)?');
+
+                        if (preg_match("/^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$/", $domainName) == FALSE) {
+                            $domainName = $this->ask('Enter valid domain name (Ex:example.com)?');
+                        };
+                        $this->installWp($siteTitle, $domainName);
+                        break;
+
+                    case 'stop-site':
+                        /**
+                         *  Stop container command
+                         */
+
+                        $this->stopSite();
+                        break;
+
+                    case 'start-site':
+                        /**
+                         *  Start container command
+                         */
+
+                        $this->startSite();
+                        break;
+
+                    default:
+                        $this->error('You have entered invalid command.');
+                        break;
+                }
             }
         }
     }
@@ -219,5 +250,29 @@ class InstallWordpress extends Command
         sleep(30);
 
         $this->info('Starting website: http://' . $domainName);
+    }
+
+    protected function stopSite()
+    {
+        $stopSite = new Process(['sudo', 'docker', 'container', 'stop', 'nginx']);
+
+        $stopSite->run();
+        if (!$stopSite->isSuccessful()) {
+            $this->warn(new ProcessFailedException($stopSite));
+        }
+
+        $this->info($stopSite->getOutput());
+    }
+
+    protected function  startSite()
+    {
+        $startSite = new Process(['sudo', 'docker', 'container', 'start', 'nginx']);
+
+        $startSite->run();
+        if (!$startSite->isSuccessful()) {
+            $this->warn(new ProcessFailedException($startSite));
+        }
+
+        $this->info($startSite->getOutput());
     }
 }

@@ -81,7 +81,6 @@ class InstallWordpress extends Command
                         $siteTitle = 'Wordpress'; /* Set default site title */
                         $domainName = 'example.com'; /* Set default domain name */
 
-                        $siteTitle = $this->ask('Enter wordpress site name?');
                         $domainName = $this->ask('Enter wordpress domain name (Ex:example.com)?');
 
                         if (preg_match("/^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$/", $domainName) == FALSE) {
@@ -104,6 +103,14 @@ class InstallWordpress extends Command
                          */
 
                         $this->startSite();
+                        break;
+
+                    case 'remove-site':
+                        /**
+                         *  Remove container command
+                         */
+
+                        $this->removeSite();
                         break;
 
                     default:
@@ -261,7 +268,7 @@ class InstallWordpress extends Command
             $this->warn(new ProcessFailedException($stopSite));
         }
 
-        $this->info($stopSite->getOutput());
+        $this->info('Website is stopped.');
     }
 
     protected function  startSite()
@@ -273,6 +280,35 @@ class InstallWordpress extends Command
             $this->warn(new ProcessFailedException($startSite));
         }
 
-        $this->info($startSite->getOutput());
+        $this->info('Website is running now.');
+    }
+
+    protected function removeSite()
+    {
+
+        /**
+         * Stop all containers
+         */
+
+        $stopContainers = new Process(['sudo', 'docker', 'container', 'stop', 'nginx', 'wordpress', 'mysql']);
+
+        $stopContainers->run();
+        if (!$stopContainers->isSuccessful()) {
+            $this->warn(new ProcessFailedException($stopContainers));
+        }
+        $this->info('Stopping running containers..');
+
+        /**
+         * Remove all containers
+         */
+
+        $removeContainers = new Process(['sudo', 'docker', 'system', 'prune', '-a', '--volumes', '-f']);
+
+        $removeContainers->run();
+        if (!$removeContainers->isSuccessful()) {
+            $this->warn(new ProcessFailedException($removeContainers));
+        }
+
+        $this->info('Website is completely removed.');
     }
 }

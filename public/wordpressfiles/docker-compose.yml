@@ -1,0 +1,85 @@
+version: "3.8"
+services:
+  wordpress:
+    image: wordpress:php7.4-fpm
+    container_name: wordpress
+    depends_on:
+      - mysql
+    environment:
+      - WORDPRESS_TABLE_PREFIX=wp_
+      - WORDPRESS_DB_NAME=wordpress
+      - WORDPRESS_DB_HOST=mysql
+      - WORDPRESS_DB_USER=shamim
+      - WORDPRESS_DB_PASSWORD=password1
+      - WORDPRESS_DEBUG=1
+    volumes:
+      - ./config/php/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
+      - ./core/wordpress:/var/www/html
+    restart: always
+    networks:
+      - wordpress-network
+
+  wordpress-cli:
+    depends_on:
+      - mysql
+      - wordpress
+    image: wordpress:cli
+    user: xfs
+    command: >
+      /bin/sh -c '
+      sleep 30;
+      wp core install --path="/var/www/html" --url="http://${DOMAIN_NAME:-localhost}" --title="${WP_TITLE}" --admin_user=shamim --admin_password=admin123 --admin_email=ulshamim@gmail.com
+      '
+    environment:
+      - WORDPRESS_TABLE_PREFIX=wp_
+      - WORDPRESS_DB_NAME=wordpress
+      - WORDPRESS_DB_HOST=mysql
+      - WORDPRESS_DB_USER=shamim
+      - WORDPRESS_DB_PASSWORD=password1
+      - WORDPRESS_DEBUG=1
+    volumes:
+      - ./config/php/php.conf.ini:/usr/local/etc/php/conf.d/conf.ini
+      - ./core/wordpress:/var/www/html
+    networks:
+      - wordpress-network
+
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    volumes:
+      - ./core/mysql:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=wordpress
+      - MYSQL_USER=shamim
+      - MYSQL_PASSWORD=password1
+      - MYSQL_ALLOW_EMPTY_PASSWORD=no
+    restart: always
+    networks:
+      - wordpress-network
+
+  nginx:
+    build:
+      context: ./config/nginx
+      args:
+        - NGINX_IMAGE=nginx:latest
+        - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+    container_name: nginx
+    depends_on:
+      - wordpress
+    ports:
+      - 80:80
+    volumes:
+      - ./core/wordpress:/var/www/html
+      - /core/logs/nginx:/var/log/nginx
+    restart: always
+    networks:
+      - wordpress-network
+
+volumes:
+  mysql:
+  wordpress:
+
+networks:
+  wordpress-network:
+    driver: bridge

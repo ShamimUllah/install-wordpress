@@ -28,7 +28,7 @@ services:
     command: >
       /bin/sh -c '
       sleep 30;
-      wp core install --path="/var/www/html" --url="http://${DOMAIN_NAME:-localhost}" --title="${WP_TITLE}" --admin_user=shamim --admin_password=admin123 --admin_email=ulshamim@gmail.com
+      wp core install --path="/var/www/html" --url="http://${DOMAIN_NAME:-example.com}" --title="${WP_TITLE:-WP}" --admin_user=shamim --admin_password=admin123 --admin_email=ulshamim@gmail.com
       '
     environment:
       - WORDPRESS_TABLE_PREFIX=wp_

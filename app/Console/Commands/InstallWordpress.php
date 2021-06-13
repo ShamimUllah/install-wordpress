@@ -47,9 +47,14 @@ class InstallWordpress extends Command
         $service = $this->argument('service');
         $this->info($service);
 
-        $this->info('Checking docker is installed or not...');
+        $this->info('Checking docker and docker-compose is installed or not...');
+        $dockerStatus = false;
+        $dockerComposeStatus = false;
         $checkDockerInstalled = new Process(['which', 'docker']);
         $checkDockerInstalled->run();
+
+        $checkDockerComposeInstalled = new Process(['which', 'docker-compose']);
+        $checkDockerComposeInstalled->run();
 
         if ($checkDockerInstalled->getOutput() == '') {
 
@@ -58,65 +63,67 @@ class InstallWordpress extends Command
              */
 
             $this->installDocker();
+            $dockerStatus = true;
         } else {
+            $dockerStatus = true;
+        }
+
+        if ($checkDockerComposeInstalled->getOutput() == '') {
             /**
-             * Check docker-compose is installed or not.
+             * Install docker compose.
              */
+            $this->installDockerCompose();
+            $dockerComposeStatus = true;
+        } else {
+            $dockerComposeStatus = true;
+        }
+        if ($dockerStatus == true && $dockerComposeStatus == true) {
+            $this->info('Docker and docker-compose is already installed.');
 
-            $this->info('Checking docker-compose is installed or not...');
-            $checkDockerComposeInstalled = new Process(['which', 'docker-compose']);
+            switch ($service) {
+                case '':
+                    /**
+                     * Wordpress installation commands
+                     */
 
-            $checkDockerComposeInstalled->run();
-            if ($checkDockerComposeInstalled->getOutput() == '') {
-                $this->installDockerCompose();
-            } else {
-                $this->info('docker-compose is already installed.');
+                    $siteTitle = 'Wordpress'; /* Set default site title */
+                    $domainName = 'example.com'; /* Set default domain name */
 
-                switch ($service) {
-                    case '':
-                        /**
-                         * Wordpress installation commands
-                         */
+                    $domainName = $this->ask('Enter wordpress domain name (Ex:example.com)?');
 
-                        $siteTitle = 'Wordpress'; /* Set default site title */
-                        $domainName = 'example.com'; /* Set default domain name */
+                    if (preg_match("/^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$/", $domainName) == FALSE) {
+                        $domainName = $this->ask('Enter valid domain name (Ex:example.com)?');
+                    };
+                    $this->installWp($siteTitle, $domainName);
+                    break;
 
-                        $domainName = $this->ask('Enter wordpress domain name (Ex:example.com)?');
+                case 'stop-site':
+                    /**
+                     *  Stop container command
+                     */
 
-                        if (preg_match("/^([a-zA-Z0-9][a-zA-Z0-9-_]*\.)*[a-zA-Z0-9]*[a-zA-Z0-9-_]*[[a-zA-Z0-9]+$/", $domainName) == FALSE) {
-                            $domainName = $this->ask('Enter valid domain name (Ex:example.com)?');
-                        };
-                        $this->installWp($siteTitle, $domainName);
-                        break;
+                    $this->stopSite();
+                    break;
 
-                    case 'stop-site':
-                        /**
-                         *  Stop container command
-                         */
+                case 'start-site':
+                    /**
+                     *  Start container command
+                     */
 
-                        $this->stopSite();
-                        break;
+                    $this->startSite();
+                    break;
 
-                    case 'start-site':
-                        /**
-                         *  Start container command
-                         */
+                case 'remove-site':
+                    /**
+                     *  Remove container command
+                     */
 
-                        $this->startSite();
-                        break;
+                    $this->removeSite();
+                    break;
 
-                    case 'remove-site':
-                        /**
-                         *  Remove container command
-                         */
-
-                        $this->removeSite();
-                        break;
-
-                    default:
-                        $this->error('You have entered invalid command.');
-                        break;
-                }
+                default:
+                    $this->error('You have entered invalid command.');
+                    break;
             }
         }
     }
@@ -128,6 +135,7 @@ class InstallWordpress extends Command
          */
 
         $installDockerStep1 = new Process(['sudo', 'apt-get', 'install', 'apt-transport-https', 'ca-certificates', 'curl', 'gnupg', 'lsb-release', '-y']);
+        $installDockerStep1->setTimeout(3600);
         $installDockerStep1->run();
         if (!$installDockerStep1->isSuccessful()) {
             $this->warn(new ProcessFailedException($installDockerStep1));
@@ -166,9 +174,6 @@ class InstallWordpress extends Command
 
             $this->info($installDockerStep5->getOutput());
         });
-        $this->info($installDockerStep4->getOutput());
-
-
 
         $installDockerStep6 = new Process(['sudo', 'apt-get', 'update', '-y']);
         $installDockerStep6->run();
@@ -195,7 +200,7 @@ class InstallWordpress extends Command
 
 
         $installDockerComposeStep1 = new Process(['sudo', 'curl', '-L', 'https://github.com/docker/compose/releases/download/1.29.2/docker-compose-linux-x86_64', '-o', '/usr/local/bin/docker-compose']);
-
+        $installDockerComposeStep1->setTimeout(3600);
         $installDockerComposeStep1->run();
         if (!$installDockerComposeStep1->isSuccessful()) {
             $this->warn(new ProcessFailedException($installDockerComposeStep1));
@@ -211,6 +216,15 @@ class InstallWordpress extends Command
         }
 
         $this->info($installDockerComposeStep2->getOutput());
+
+        $installDockerComposeStep3 = new Process(['sudo', 'service', 'docker', 'start']);
+
+        $installDockerComposeStep3->run();
+        if (!$installDockerComposeStep3->isSuccessful()) {
+            $this->warn(new ProcessFailedException($installDockerComposeStep3));
+        }
+
+        $this->info($installDockerComposeStep3->getOutput());
     }
 
     protected function installWp($siteTitle, $domainName)
@@ -229,7 +243,7 @@ class InstallWordpress extends Command
                 $this->info($buffer);
             }
         });
-        $this->info($composeFile);
+
         if (!$insrallWP->isSuccessful()) {
             $this->warn(new ProcessFailedException($insrallWP));
         }
